@@ -986,58 +986,64 @@ function hasOwnProperty(obj, prop) {
 var Game = require('crtrdg-gameloop');
 var Mouse = require('crtrdg-mouse');
 var Wall = require('./wall.js');
+var Player = require('./player.js');
 
-var THICKNESS = 10;
+THICKNESS = 10;
+PI = Math.PI;
+
+var generateWalls = function(number) {
+  var walls = [];
+  var pi = Math.PI;
+  var start = pi / 16, end = pi / 4;
+  
+  for(var i = 0 ; i < number ; i++) {
+    walls.push(new Wall({
+      startAngle: Math.random() * 2 * Math.PI,
+      size: 2 * pi - ((end - start) / number * i + start),
+      color: "#008fff"
+    }));
+  }
+  
+  return walls;
+};
+
+var walls = generateWalls(15);
+var wallsLeft = [];
 
 var game = new Game({
   canvasId: 'game',
   width: 800,
   height: 800,
 });
+game.walls = walls;
+game.wallsLeft = wallsLeft;
 
-var walls = [
-  new Wall({
-    radius: 50, // todo : computed
-    startAngle: 0,
-    endAngle: 2 * Math.PI,
-    color: '#008fff',
-  }),
-  new Wall({
-    radius: 100,
-    startAngle: 0,
-    endAngle: 2 * Math.PI,
-    color: '#008fff',
-  }),
-  new Wall({
-    radius: 20,
-    startAngle: 0,
-    endAngle: 3/2 * Math.PI,
-    color: '#008fff',
-  }),
-];
+var player = new Player({
+  radius: 10,
+  startAngle: 0,
+  size: Math.PI / 32,
+  color: '#000',
+});
+
 walls.forEach(function(item, i) {
-  item.on('draw', function(draw){
-    draw.beginPath();
-    draw.imageSmoothingEnabled = true;
-    draw.arc(game.width / 2, game.height / 2, THICKNESS * (i * 2 + 2), this.startAngle, this.endAngle, false);
-    draw.lineWidth = THICKNESS;
-    draw.strokeStyle = this.color;
-    draw.stroke();
-    draw.closePath();
+  item.on('draw', function(draw) {
+    item.draw(draw, i);
   });
   item.addTo(game);
 });
+player.on('draw', player.draw);
+player.addTo(game);
 
 var mouse = new Mouse(game);
 
-mouse.on('click', function(location){
-
+mouse.on('mousemove', function(location){
+  player.updatePosition(location);
 });
 
 game.on('update', function(interval){
 
 });
-},{"./wall.js":16,"crtrdg-gameloop":8,"crtrdg-mouse":13}],7:[function(require,module,exports){
+},{"./player.js":16,"./wall.js":17,"crtrdg-gameloop":8,"crtrdg-mouse":13}],7:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter;
 var inherits = require('inherits');
 
@@ -1451,18 +1457,88 @@ arguments[4][2][0].apply(exports,arguments)
 },{"dup":2}],15:[function(require,module,exports){
 arguments[4][2][0].apply(exports,arguments)
 },{"dup":2}],16:[function(require,module,exports){
+var Wall = require('./wall');
+var inherits = require('inherits');
+
+inherits(Player, Wall);
+
+Player.prototype.updatePosition = function(location) {
+  var centerPoint = {
+    x: game.width / 2,
+    y: game.height / 2
+  };
+  
+  location.x -= centerPoint.x;
+  location.y -= centerPoint.y;
+  
+  var angle = Math.atan2(location.y, location.x);
+  angle -= this.size / 2; // centering the angle
+  if(angle < 0)
+    angle += 2 * Math.PI;
+  
+  this.startAngle = angle;
+  
+  if(this.game.walls.length <= 0) {
+    console.log('You win !');
+    return;
+  }
+  
+  var wallAbove = this.game.walls[0];
+  W = wallAbove;
+  P = this;
+  console.log(this.startAngle, this.size, wallAbove.startAngle, wallAbove.size);
+  
+  var start = this.startAngle - wallAbove.startAngle;
+  if(start < 0)
+    start += 2 * Math.PI;
+  
+  if(start >= wallAbove.size && 
+     start + this.size <= 2 * Math.PI && 
+     this.size <= 2 * Math.PI - wallAbove.size) { // the opening must be larger
+    this.radius += THICKNESS * 2;
+    this.game.wallsLeft.push(this.game.walls.shift());
+  }
+};
+
+Player.prototype.draw = function(draw, i) {
+  draw.beginPath();
+  draw.imageSmoothingEnabled = true;
+  draw.arc(game.width / 2, game.height / 2, this.radius, this.startAngle, this.startAngle + this.size, false);
+  draw.lineWidth = THICKNESS;
+  draw.strokeStyle = this.color;
+  draw.stroke();
+  draw.closePath();
+};
+
+function Player(options) {
+  for(var i in options) {
+    this[i] = options[i];
+  }
+  console.log('Player initialized', this);
+}
+
+module.exports = Player;
+},{"./wall":17,"inherits":15}],17:[function(require,module,exports){
 var Entity = require('crtrdg-entity');
 var inherits = require('inherits');
 
 inherits(Wall, Entity);
 
-//Wall.prototype
+Wall.prototype.draw = function(draw, i) {
+  draw.beginPath();
+  draw.imageSmoothingEnabled = true;
+  draw.arc(game.width / 2, game.height / 2, THICKNESS * (i * 2 + 2), this.startAngle, this.startAngle + this.size, false);
+  draw.lineWidth = THICKNESS;
+  draw.strokeStyle = this.color;
+  draw.stroke();
+  draw.closePath();
+};
 
 function Wall(options) {
   for(var i in options) {
     this[i] = options[i];
   }
-  console.log(this);
+  console.log('Wall initialized', this);
 }
 
 module.exports = Wall;
