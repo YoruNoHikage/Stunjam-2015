@@ -56,5 +56,14 @@ mouse.on('mousemove', function(location){
 });
 
 game.on('update', function(interval){
-
+  if(!navigator.getGamepads()[0]) {
+    return;
+  }
+  
+  var controller = navigator.getGamepads()[0];
+  var location = {
+    x: controller.axes[0].toFixed(2) * game.width,
+    y: controller.axes[1].toFixed(2) * game.height
+  };
+  player.updatePosition(location);
 });
